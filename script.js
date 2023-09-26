@@ -1,9 +1,12 @@
+// DOM Elements
 const playerContainer = document.getElementById('all-players-container');
 const newPlayerFormContainer = document.getElementById('new-player-form');
 
+// Configuration
 const cohortName = '2302-ACC-PT-WEB-PT-B';
 const APIURL = `https://fsa-puppy-bowl.herokuapp.com/api/${cohortName}/players/`;
 
+// Fetch all players
 const fetchAllPlayers = async () => {
     try {
         const response = await fetch(APIURL);
@@ -43,7 +46,12 @@ const addNewPlayer = async (playerObj) => {
     }
 };
 
-const removePlayer = async (playerId) => {
+const removePlayerDOM = (playerId) => {
+    const cardToRemove = document.querySelector(`[id="player-details-${playerId}"]`).parentElement;
+    cardToRemove.remove();
+};
+
+const removePlayerAPI = async (playerId) => {
     try {
         const response = await fetch(`${APIURL}${playerId}`, {
             method: 'DELETE',
@@ -59,18 +67,60 @@ const removePlayer = async (playerId) => {
     }
 };
 
+const displayPlayerDetails = async (playerId) => {
+    const detailsSection = document.getElementById(`player-details-${playerId}`);
+    const detailsButton = detailsSection.querySelector('.details-button');
+
+    // Hide or show existing content
+    if(detailsSection.querySelector('.details-content')) {
+        const detailsContent = detailsSection.querySelector('.details-content');
+        if(detailsContent.style.display === 'none') {
+            detailsContent.style.display = 'block';
+            detailsButton.textContent = 'Hide details';
+        } else {
+            detailsContent.style.display = 'none';
+            detailsButton.textContent = 'See details';
+        }
+        return;
+    }
+
+    const response = await fetchSinglePlayer(playerId);
+    
+    // Access the inner player object
+    const player = response.player;
+    
+    // Log to ensure we have the correct data now
+    console.log("Fetched inner player data:", player);
+    
+    if (player) {
+        const detailsHTML = `
+            <div class="details-content">
+                <strong>Details:</strong>
+                <p>Breed: ${player.breed}</p>
+                <p>Status: ${player.status}</p>
+            </div>
+        `;
+        
+        detailsSection.insertAdjacentHTML('afterbegin', detailsHTML);
+        detailsButton.textContent = 'Hide details';
+    }
+};
+
+
+
+
 const renderAllPlayers = (playerList) => {
     try {
         let playerContainerHTML = '';
         playerList.forEach(player => {
             playerContainerHTML += `
                 <div class="player-card">
-                    <h2>${player.name}</h2>
-                    <p>Breed: ${player.breed}</p>
-                    <p>Status: ${player.status}</p>
                     <img src="${player.imageUrl}" alt="${player.name}">
-                    <button onclick="fetchSinglePlayer(${player.id})">See details</button>
-                    <button onclick="removePlayer(${player.id})">Remove from roster</button>
+                    <h2>${player.name}</h2>
+                    <div id="player-details-${player.id}" class="player-details">
+                        <button class="details-button" onclick="displayPlayerDetails(${player.id})">See details</button>
+                        <button onclick="removePlayerDOM(${player.id}); removePlayerAPI(${player.id});">Remove from roster</button>
+                    </div>
                 </div>
             `;
         });
@@ -126,7 +176,6 @@ const renderNewPlayerForm = () => {
         console.error('Uh oh, trouble rendering the new player form!', err);
     }
 }
-
 
 const init = async () => {
     const players = await fetchAllPlayers();
